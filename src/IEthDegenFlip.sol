@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
 interface IEthDegenFlip {
@@ -7,7 +8,7 @@ interface IEthDegenFlip {
         ERC721
     }
 
-    // parameters signed offchain, verified onchain
+    // parameters signed offchain following EIP-712, verified onchain
     struct FlipAgreement {
         address maker;
         address contractAddress;
