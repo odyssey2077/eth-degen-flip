@@ -14,8 +14,10 @@ interface IEthDegenFlip {
         address contractAddress;
         uint256 amount;
         uint256 expireTime;
-        uint8 nonce;
+        uint256 nonce;
     } 
+    
+    error NonceRevoked(uint256 nonce);
 
     function matchAgreement(bytes calldata signature, address taker, FlipAgreement calldata flipAgreement) external;
     function revokeAgreement(uint8[] calldata revokedNonce) external;
