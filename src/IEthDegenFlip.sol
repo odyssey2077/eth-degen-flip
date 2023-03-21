@@ -19,6 +19,6 @@ interface IEthDegenFlip {
     
     error NonceRevoked(uint256 nonce);
 
-    function matchAgreement(bytes calldata signature, address taker, FlipAgreement calldata flipAgreement) external;
+    function matchAgreement(bytes calldata signature, address taker, FlipAgreement calldata flipAgreement, uint256 salt) external;
     function revokeAgreement(uint8[] calldata revokedNonce) external;
 }
