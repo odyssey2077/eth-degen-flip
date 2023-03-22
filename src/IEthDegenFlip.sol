@@ -18,7 +18,15 @@ interface IEthDegenFlip {
     } 
     
     error NonceRevoked(uint256 nonce);
+    error SignatureAlreadyUsed(bytes signature);
+    error SignatureNotSignedByTaker();
+    error NonceAlreadyRevoked(uint8 nonce, address sender);
+    error TransferNotAllowedByMaker(address maker, address erc20, address operator);
+    error TransferNotAllowedByTaker(address taker, address erc20, address operator);
+    error MakerNotEnoughBalance(address maker, uint256 amount, address erc20);
+    error TakerNotEnoughBalance(address taker, uint256 amount, address erc20);
+    event revokedNoncesUpdated(uint8[] revokedNonces, address sender);
 
-    function matchAgreement(bytes calldata signature, address taker, FlipAgreement calldata flipAgreement, uint256 salt) external;
+    function matchAgreement(bytes calldata signature, FlipAgreement calldata flipAgreement) external;
     function revokeAgreement(uint8[] calldata revokedNonce) external;
 }
