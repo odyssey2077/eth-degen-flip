@@ -5,7 +5,7 @@ import {IEthDegenFlip} from "./IEthDegenFlip.sol";
 import { ECDSA } from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 import {ERC165} from "openzeppelin-contracts/contracts/utils/introspection/ERC165.sol";
 import {EnumerableSet} from "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
-
+import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 contract EthDegenFlip is IEthDegenFlip, ERC165 {
     using EnumerableSet for EnumerableSet.UintSet;
@@ -52,6 +52,11 @@ contract EthDegenFlip is IEthDegenFlip, ERC165 {
 
     function matchAgreement(bytes calldata signature, FlipAgreement calldata flipAgreement) external {
         _validateFlipAgreement(flipAgreement, signature);
+        address maker = flipAgreement.maker;
+        address taker = msg.sender;
+        uint256 amount = flipAgreement.amount;
+        address erc20Address = flipAgreement.contractAddress;
+        _validateExecution(maker, taker, erc20Address, amount);
 
         return;
     }
@@ -90,6 +95,22 @@ contract EthDegenFlip is IEthDegenFlip, ERC165 {
         if (recoveredAddress != flipAgreement.maker) {
             revert SignatureNotSignedByTaker();
         }
+    }
+
+    function _validateExecution(address maker, address taker, address erc20Address, uint256 amount) internal view {
+        IERC20 erc20Contract = IERC20(erc20Address);
+        if (erc20Contract.allowance(maker, address(this)) < amount) {
+            revert TransferNotAllowedByMaker(maker, address(erc20Contract), address(this));
+        }
+        if (erc20Contract.allowance(taker, address(this)) < amount) {
+            revert TransferNotAllowedByTaker(taker, address(erc20Contract), address(this));
+        }      
+        if (erc20Contract.balanceOf(maker) < amount) {
+            revert MakerNotEnoughBalance(maker, amount, address(erc20Contract));
+        }
+        if (erc20Contract.balanceOf(taker) < amount) {
+            revert TakerNotEnoughBalance(taker, amount, address(erc20Contract));
+        }        
     }
 
     function _getDigest(
