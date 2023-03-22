@@ -58,7 +58,11 @@ contract EthDegenFlip is IEthDegenFlip, ERC165 {
         address erc20Address = flipAgreement.contractAddress;
         _validateExecution(maker, taker, erc20Address, amount);
 
-        return;
+        address winner;
+        address loser;
+        (winner, loser) = _generateFlipResult(maker, taker);
+        IERC20(erc20Address).transferFrom(loser, winner, amount);
+        emit flipResult(winner, loser, erc20Address, amount);
     }
 
     function revokeAgreement(uint8[] calldata revokedNonces) external {
@@ -111,6 +115,11 @@ contract EthDegenFlip is IEthDegenFlip, ERC165 {
         if (erc20Contract.balanceOf(taker) < amount) {
             revert TakerNotEnoughBalance(taker, amount, address(erc20Contract));
         }        
+    }
+
+    function _generateFlipResult(address maker, address taker) internal pure returns (address winner, address loser) {
+        winner = maker;
+        loser = taker;
     }
 
     function _getDigest(

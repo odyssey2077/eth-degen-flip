@@ -26,6 +26,7 @@ interface IEthDegenFlip {
     error MakerNotEnoughBalance(address maker, uint256 amount, address erc20);
     error TakerNotEnoughBalance(address taker, uint256 amount, address erc20);
     event revokedNoncesUpdated(uint8[] revokedNonces, address sender);
+    event flipResult(address winner, address loser, address erc20Address, uint256 amount);
 
     function matchAgreement(bytes calldata signature, FlipAgreement calldata flipAgreement) external;
     function revokeAgreement(uint8[] calldata revokedNonce) external;
