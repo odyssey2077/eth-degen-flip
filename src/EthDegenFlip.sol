@@ -22,6 +22,7 @@ contract EthDegenFlip is IEthDegenFlip, ERC165 {
                 "uint256 amount,"
                 "uint256 expireTime,"
                 "uint256 nonce"
+                "bytes32 makerSealedSeed;"
             ")"
         );
     bytes32 internal constant _EIP_712_DOMAIN_TYPEHASH =
@@ -37,10 +38,12 @@ contract EthDegenFlip is IEthDegenFlip, ERC165 {
     bytes32 internal constant _NAME_HASH = keccak256("EthDegenFlip");
     bytes32 internal constant _VERSION_HASH = keccak256("1.0");
     uint256 internal immutable _CHAIN_ID = block.chainid;
-    bytes32 internal immutable _DOMAIN_SEPARATOR;        
+    bytes32 internal immutable _DOMAIN_SEPARATOR;  
+    uint256 FIXED_BLOCK_NUMBER = 16886917;      
     mapping(address => EnumerableSet.UintSet) internal _revokedNonces;
     mapping(bytes32 => bool) private _usedDigests;
-    
+    mapping(bytes32 => TakerInfo) private _digestsToTakerInfo;
+
     constructor() {
         // Derive the domain separator.
         _DOMAIN_SEPARATOR = _deriveDomainSeparator();
@@ -50,18 +53,23 @@ contract EthDegenFlip is IEthDegenFlip, ERC165 {
         return interfaceId == type(IEthDegenFlip).interfaceId || super.supportsInterface(interfaceId);
     }
 
-    function matchAgreement(bytes calldata signature, FlipAgreement calldata flipAgreement) external {
-        _validateFlipAgreement(flipAgreement, signature);
+    function matchAgreement(bytes calldata signature, FlipAgreement calldata flipAgreement, bytes32 takerSealedSeed) external {
+        bytes32 digest = _validateFlipAgreement(flipAgreement, signature);
         address maker = flipAgreement.maker;
         address taker = msg.sender;
         uint256 amount = flipAgreement.amount;
         address erc20Address = flipAgreement.contractAddress;
         _validateExecution(maker, taker, erc20Address, amount);
 
-        return;
+        // transfer stake to middleman for settlement. If we don't, after revealing seeds the losing side might transfer money away
+        IERC20(erc20Address).transferFrom(maker, address(this), amount);
+        IERC20(erc20Address).transferFrom(taker, address(this), amount);
+        _digestsToTakerInfo[digest] = TakerInfo({taker: taker, takerSealedSeed: takerSealedSeed});
+        emit MatchAgreement(maker, taker, erc20Address, amount);
     }
 
     function revokeAgreement(uint8[] calldata revokedNonces) external {
+        // to do: can't revoke if matched
         address sender = msg.sender;
         EnumerableSet.UintSet storage revokedNonceRef = _revokedNonces[sender];
         uint256 revokedNonceLength = revokedNonces.length;
@@ -75,15 +83,43 @@ contract EthDegenFlip is IEthDegenFlip, ERC165 {
                 ++i;
             }            
         }
-        emit revokedNoncesUpdated(revokedNonces, sender);
+        emit RevokedNoncesUpdated(revokedNonces, sender);
     }
 
-    function _validateFlipAgreement(FlipAgreement calldata flipAgreement, bytes calldata signature) internal {
+    function executeAgreement(FlipAgreement calldata flipAgreement, bytes memory makerSeed, bytes memory takerSeed) external {
+        bytes32 digest = _getDigest(flipAgreement);
+        if (_digestsToTakerInfo[digest].taker == address(0)) {
+            revert FlipNotMatched();
+        }
+
+        address taker = _digestsToTakerInfo[digest].taker;
+        bytes32 takerSealedSeed = _digestsToTakerInfo[digest].takerSealedSeed;
+        address maker = flipAgreement.maker;
+        address contractAddress = flipAgreement.contractAddress;
+        bytes32 makerSealedSeed = flipAgreement.makerSealedSeed;
+        if (keccak256(abi.encode(taker, takerSeed)) != takerSealedSeed) {
+            revert TakerSeedNotMatched();
+        }
+        if (keccak256(abi.encode(maker, makerSeed)) != makerSealedSeed) {
+            revert MakerSeedNotMatched();
+        }   
+
+        // generate randomness
+        uint random = uint(keccak256(abi.encode(takerSeed, makerSeed, blockhash(FIXED_BLOCK_NUMBER))));
+
+        // final settlement
+        address winner = random % 2 == 0 ? maker : taker;
+        address loser = random % 2 == 0 ? taker : maker;
+        IERC20(contractAddress).transfer(winner, flipAgreement.amount * 2);
+        emit FlipResult(winner, loser, contractAddress, flipAgreement.amount);
+    }
+
+    function _validateFlipAgreement(FlipAgreement calldata flipAgreement, bytes calldata signature) internal returns (bytes32 digest) {
         if (_revokedNonces[flipAgreement.maker].contains(flipAgreement.nonce)) {
             revert NonceRevoked(flipAgreement.nonce);
         }
         // Get the digest to verify the EIP-712 signature.
-        bytes32 digest = _getDigest(
+        digest = _getDigest(
             flipAgreement
         );        
         if (_usedDigests[digest]) {
@@ -113,6 +149,11 @@ contract EthDegenFlip is IEthDegenFlip, ERC165 {
         }        
     }
 
+    function _generateFlipResult(address maker, address taker) internal pure returns (address winner, address loser) {
+        winner = maker;
+        loser = taker;
+    }
+
     function _getDigest(
         FlipAgreement calldata flipAgreement
     ) internal view returns (bytes32 digest) {
@@ -128,7 +169,8 @@ contract EthDegenFlip is IEthDegenFlip, ERC165 {
                         flipAgreement.contractAddress,
                         flipAgreement.amount,
                         flipAgreement.expireTime,
-                        flipAgreement.nonce
+                        flipAgreement.nonce,
+                        flipAgreement.makerSealedSeed
                     )
                 )
             )
