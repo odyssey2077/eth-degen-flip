@@ -6,6 +6,7 @@ import { ECDSA } from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA
 import {ERC165} from "openzeppelin-contracts/contracts/utils/introspection/ERC165.sol";
 import {EnumerableSet} from "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import { ReentrancyGuard } from "solmate/utils/ReentrancyGuard.sol";
 
 contract EthDegenFlip is IEthDegenFlip, ERC165 {
     using EnumerableSet for EnumerableSet.UintSet;
