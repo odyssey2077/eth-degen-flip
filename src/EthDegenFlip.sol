@@ -6,8 +6,9 @@ import { ECDSA } from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA
 import {ERC165} from "openzeppelin-contracts/contracts/utils/introspection/ERC165.sol";
 import {EnumerableSet} from "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import { ReentrancyGuard } from "solmate/src/utils/ReentrancyGuard.sol";
 
-contract EthDegenFlip is IEthDegenFlip, ERC165 {
+contract EthDegenFlip is IEthDegenFlip, ERC165, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.UintSet;
     using ECDSA for bytes32;
 
@@ -53,7 +54,7 @@ contract EthDegenFlip is IEthDegenFlip, ERC165 {
         return interfaceId == type(IEthDegenFlip).interfaceId || super.supportsInterface(interfaceId);
     }
 
-    function matchAgreement(bytes calldata signature, FlipAgreement calldata flipAgreement, bytes32 takerSealedSeed) external {
+    function matchAgreement(bytes calldata signature, FlipAgreement calldata flipAgreement, bytes32 takerSealedSeed) nonReentrant external {
         bytes32 digest = _validateFlipAgreement(flipAgreement, signature);
         address maker = flipAgreement.maker;
         address taker = msg.sender;
@@ -86,7 +87,7 @@ contract EthDegenFlip is IEthDegenFlip, ERC165 {
         emit RevokedNoncesUpdated(revokedNonces, sender);
     }
 
-    function executeAgreement(FlipAgreement calldata flipAgreement, bytes memory makerSeed, bytes memory takerSeed) external {
+    function executeAgreement(FlipAgreement calldata flipAgreement, bytes memory makerSeed, bytes memory takerSeed) nonReentrant external {
         bytes32 digest = _getDigest(flipAgreement);
         if (_digestsToTakerInfo[digest].taker == address(0)) {
             revert FlipNotMatched();
