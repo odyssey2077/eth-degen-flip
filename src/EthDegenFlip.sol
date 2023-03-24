@@ -29,6 +29,8 @@ contract EthDegenFlip is IEthDegenFlip, ERC165, ReentrancyGuard {
     bytes32 internal immutable _DOMAIN_SEPARATOR;
     uint256 FIXED_BLOCK_NUMBER = 16_886_917;
     mapping(address => EnumerableSet.UintSet) internal _revokedNonces;
+    // matched nonce can't be revoked
+    mapping(address => EnumerableSet.UintSet) internal _matchedNonces;
     mapping(bytes32 => bool) private _usedDigests;
     mapping(bytes32 => TakerInfo) private _digestsToTakerInfo;
 
@@ -61,6 +63,8 @@ contract EthDegenFlip is IEthDegenFlip, ERC165, ReentrancyGuard {
         IERC20(erc20Address).transferFrom(maker, address(this), amount);
         IERC20(erc20Address).transferFrom(taker, address(this), amount);
         _digestsToTakerInfo[digest] = TakerInfo({ taker: taker, takerSealedSeed: takerSealedSeed });
+        EnumerableSet.UintSet storage matchedNonce = _matchedNonces[maker];
+        matchedNonce.add(flipAgreement.nonce);
         emit MatchAgreement(maker, taker, erc20Address, amount);
     }
 
@@ -68,9 +72,13 @@ contract EthDegenFlip is IEthDegenFlip, ERC165, ReentrancyGuard {
         // to do: can't revoke if matched
         address sender = msg.sender;
         EnumerableSet.UintSet storage revokedNonceRef = _revokedNonces[sender];
+        EnumerableSet.UintSet storage matchedNonce = _matchedNonces[sender];
         uint256 revokedNonceLength = revokedNonces.length;
         for (uint256 i = 0; i < revokedNonceLength;) {
             uint8 revokedNonce = revokedNonces[i];
+            if (matchedNonce.contains(revokedNonce)) {
+                revert NonceAlreadyMatched(revokedNonce, sender);
+            }
             bool added = revokedNonceRef.add(revokedNonce);
             if (!added) {
                 revert NonceAlreadyRevoked(revokedNonce, sender);
