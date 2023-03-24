@@ -16,13 +16,13 @@ interface IEthDegenFlip {
         uint256 expireTime;
         uint256 nonce;
         bytes32 makerSealedSeed;
-    } 
-    
+    }
+
     struct TakerInfo {
         address taker;
         bytes32 takerSealedSeed;
     }
-    
+
     error NonceRevoked(uint256 nonce);
     error SignatureAlreadyUsed(bytes signature);
     error SignatureNotSignedByTaker();
@@ -34,11 +34,22 @@ interface IEthDegenFlip {
     error FlipNotMatched();
     error TakerSeedNotMatched();
     error MakerSeedNotMatched();
+
     event RevokedNoncesUpdated(uint8[] revokedNonces, address sender);
     event FlipResult(address winner, address loser, address erc20Address, uint256 amount);
     event MatchAgreement(address maker, address taker, address erc20Address, uint256 amount);
 
-    function matchAgreement(bytes calldata signature, FlipAgreement calldata flipAgreement, bytes32 takerSealedSeed) external;
-    function executeAgreement(FlipAgreement calldata flipAgreement, bytes memory makerSeed, bytes memory takerSeed) external;
+    function matchAgreement(
+        bytes calldata signature,
+        FlipAgreement calldata flipAgreement,
+        bytes32 takerSealedSeed
+    )
+        external;
+    function executeAgreement(
+        FlipAgreement calldata flipAgreement,
+        bytes memory makerSeed,
+        bytes memory takerSeed
+    )
+        external;
     function revokeAgreement(uint8[] calldata revokedNonce) external;
 }
