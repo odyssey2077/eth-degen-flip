@@ -122,7 +122,7 @@ contract EthDegenFlip is IEthDegenFlip, ERC165, ReentrancyGuard {
         address winner = random % 2 == 0 ? maker : taker;
         address loser = random % 2 == 0 ? taker : maker;
         IERC20(contractAddress).transfer(winner, flipAgreement.amount * 2);
-        emit FlipResult(winner, loser, contractAddress, flipAgreement.amount);
+        emit FlipResult(winner, loser, random, contractAddress, flipAgreement.amount);
     }
 
     function _validateFlipAgreement(
@@ -195,5 +195,29 @@ contract EthDegenFlip is IEthDegenFlip, ERC165, ReentrancyGuard {
 
     function _deriveDomainSeparator() internal view returns (bytes32) {
         return keccak256(abi.encode(_EIP_712_DOMAIN_TYPEHASH, _NAME_HASH, _VERSION_HASH, block.chainid, address(this)));
+    }
+
+    function getRevokedNonces(address maker) external view returns (uint256[] memory revokedNonces) {
+        return _revokedNonces[maker].values();
+    }
+
+    function getMatchedNonces(address maker) external view returns (uint256[] memory matchedNonces) {
+        return _matchedNonces[maker].values();
+    }
+
+    function checkNonceRevoked(address maker, uint256 nonce) external view returns (bool) {
+        return _revokedNonces[maker].contains(nonce);
+    }
+
+    function checkNonceMatched(address maker, uint256 nonce) external view returns (bool) {
+        return _matchedNonces[maker].contains(nonce);
+    }
+
+    function checkDigestUsed(bytes32 digest) external view returns (bool) {
+        return _usedDigests[digest];
+    }
+
+    function getTakerInfo(bytes32 digest) external view returns (address, bytes32) {
+        return (_digestsToTakerInfo[digest].taker, _digestsToTakerInfo[digest].takerSealedSeed);
     }
 }

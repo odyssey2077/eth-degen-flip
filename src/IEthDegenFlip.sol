@@ -37,7 +37,7 @@ interface IEthDegenFlip {
     error MakerSeedNotMatched();
 
     event RevokedNoncesUpdated(uint8[] revokedNonces, address sender);
-    event FlipResult(address winner, address loser, address erc20Address, uint256 amount);
+    event FlipResult(address winner, address loser, uint256 randomness, address erc20Address, uint256 amount);
     event MatchAgreement(address maker, address taker, address erc20Address, uint256 amount);
 
     function matchAgreement(
@@ -53,4 +53,9 @@ interface IEthDegenFlip {
     )
         external;
     function revokeAgreement(uint8[] calldata revokedNonce) external;
+
+    function getRevokedNonces(address maker) external view returns (uint256[] memory revokedNonces);
+    function getMatchedNonces(address maker) external view returns (uint256[] memory matchedNonces);
+    function checkNonceRevoked(address maker, uint256 nonce) external view returns (bool);
+    function checkNonceMatched(address maker, uint256 nonce) external view returns (bool);
 }
