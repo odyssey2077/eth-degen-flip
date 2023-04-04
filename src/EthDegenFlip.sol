@@ -104,14 +104,11 @@ contract EthDegenFlip is IEthDegenFlip, ERC165, ReentrancyGuard {
         }
 
         address taker = _digestsToTakerInfo[digest].taker;
-        bytes32 takerSealedSeed = _digestsToTakerInfo[digest].takerSealedSeed;
         address maker = flipAgreement.maker;
-        address contractAddress = flipAgreement.contractAddress;
-        bytes32 makerSealedSeed = flipAgreement.makerSealedSeed;
-        if (keccak256(abi.encode(taker, takerSeed)) != takerSealedSeed) {
+        if (keccak256(abi.encode(taker, takerSeed)) != _digestsToTakerInfo[digest].takerSealedSeed) {
             revert TakerSeedNotMatched();
         }
-        if (keccak256(abi.encode(maker, makerSeed)) != makerSealedSeed) {
+        if (keccak256(abi.encode(maker, makerSeed)) != flipAgreement.makerSealedSeed) {
             revert MakerSeedNotMatched();
         }
 
@@ -121,8 +118,8 @@ contract EthDegenFlip is IEthDegenFlip, ERC165, ReentrancyGuard {
         // final settlement
         address winner = random % 2 == 0 ? maker : taker;
         address loser = random % 2 == 0 ? taker : maker;
-        IERC20(contractAddress).transfer(winner, flipAgreement.amount * 2);
-        emit FlipResult(winner, loser, random, contractAddress, flipAgreement.amount);
+        IERC20(flipAgreement.contractAddress).transfer(winner, flipAgreement.amount * 2);
+        emit FlipResult(winner, loser, random, flipAgreement.contractAddress, flipAgreement.amount);
     }
 
     function _validateFlipAgreement(
