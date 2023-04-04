@@ -35,6 +35,7 @@ interface IEthDegenFlip {
     error FlipNotMatched();
     error TakerSeedNotMatched();
     error MakerSeedNotMatched();
+    error FlipExpired();
 
     event RevokedNoncesUpdated(uint8[] revokedNonces, address sender);
     event FlipResult(address winner, address loser, uint256 randomness, address erc20Address, uint256 amount);

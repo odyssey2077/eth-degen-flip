@@ -111,6 +111,9 @@ contract EthDegenFlip is IEthDegenFlip, ERC165, ReentrancyGuard {
         if (keccak256(abi.encode(maker, makerSeed)) != flipAgreement.makerSealedSeed) {
             revert MakerSeedNotMatched();
         }
+        if (flipAgreement.expireTime < block.timestamp) {
+            revert FlipExpired();
+        }
 
         // generate randomness
         uint256 random = uint256(keccak256(abi.encode(takerSeed, makerSeed, blockhash(FIXED_BLOCK_NUMBER))));
